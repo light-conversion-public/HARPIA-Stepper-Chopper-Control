@@ -1,0 +1,17 @@
+{
+  "app_name": "Optimize polarization",
+  "description": "",
+  "documentation_link": "README.md",
+  "version": "0.1",
+  "homepage": "",
+  "guid": "",
+  "connections": [
+    {
+      "connection_id": "harpia",
+      "name": "HARPIA REST",
+      "required": true,
+      "type": "REST",
+      "target": "HARPIA"
+    }
+  ]
+}
