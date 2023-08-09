@@ -44,3 +44,5 @@ Advanced settings can be changed in the 'settings.json' file
  - 'signal': Signal "AuxiliarySignal" (default), "PumpPhotodetectorSignal",
    'ProbePhotodetectorSignal' or "SpectrometerSignal" of the selected HARPIA 
    detector
+ - 'speed': (default 30000) can be decreased for more accurate diagnostics 
+   when setting circular polarization
