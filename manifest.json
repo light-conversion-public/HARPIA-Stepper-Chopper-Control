@@ -1,9 +1,9 @@
 {
-  "app_name": "Polarization control",
+  "app_name": "HARPIA polarization control",
   "description": "",
   "documentation_link": "README.md",
   "version": "0.2",
-  "homepage": "",
+  "homepage": "https://github.com/light-conversion-public/HARPIA-Polarization-Control",
   "guid": "",
   "connections": [
     {
