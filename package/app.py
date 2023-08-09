@@ -56,7 +56,7 @@ harpia.set_spectra_per_acquisition(settings['spectra_per_acquisition'])
 
 mb = MotorBoard(settings['can_id'], HarpiaCanSender(harpia))
 
-diag_unit = PolarizationDiagnosticsUnit(mb, settings['motor_index'], settings['reduction'], settings.get("speed") or 10000, r'package/Sanyo Denki SH2281-5631 (rotary).json')
+diag_unit = PolarizationDiagnosticsUnit(mb, settings['motor_index'], settings['reduction'], settings.get("speed") or 10000, r'package/Sanyo Denki SH2281-5631 (rotary).json', settings.get("zero_angle") or 0.0)
 
 
 def get_intensity():
@@ -102,10 +102,19 @@ def get_polarization_information():
     return {"rho_p": rho_P, "extinction": 1.0/rho_P, "efficiency": P, "polarization_angle": polarization_angle}
 
 def go_to(par):
-    if par[0] is not None:        
+    if par[0] is not None:    
         harpia.set_berek_rotator_target_rotate_angle(par[0])
-    if par[1] is not None:        
+    if par[1] is not None:                
         harpia.set_berek_rotator_target_tilt_angle(par[1])
+
+def fun_single(par):
+    go_to(par)
+
+    score = get_intensity()
+
+    print(par, score)
+
+    return score
 
 def fun(par):
     go_to(par)
@@ -201,13 +210,26 @@ def hooke_jeeves(fun, par, delta = 1.0, alpha = 0.5, step_min = 0.3):
 #hooke_jeeves(fun_rotate, [harpia.berek_rotator_actual_rotate_angle()], delta = 1.0, step_min = 0.25)
 
 #known_datapoints[target] = {'rotate': harpia.berek_rotator_actual_rotate_angle(), 'tilt': harpia.berek_rotator_actual_rotate_angle()}
+wavelength = 710.0
+targets = np.arange(0.0, 95.0, 10.0)
+#targets = [40.0, 50.0, 60.0, 70.0, 80.0, 90.0]
+#targets = [30.0, 20.0, 10.0, 0.0]
 
+if known_datapoints.get(wavelength) is None:
+    known_datapoints[wavelength] = {}
+    
+go_to([45.0, 150.0])
 
-for target in np.arange(0.0, 90.0, 5.0):
+for target in targets:
+    
     # FOR LINEAR
-    hooke_jeeves(fun, [harpia.berek_rotator_actual_rotate_angle(), harpia.berek_rotator_actual_tilt_angle()], delta = 5.0, step_min = 0.125)
-    known_datapoints[target] = {'rotate': harpia.berek_rotator_actual_rotate_angle(), 'tilt': harpia.berek_rotator_actual_tilt_angle(), 'data': get_polarization_information()}
+    
+    
+    diag_unit.set_angle(target)
+    diag_unit.wait_until_stopped()
 
+    hooke_jeeves(fun_single, [harpia.berek_rotator_actual_rotate_angle(), harpia.berek_rotator_actual_tilt_angle()], delta = 7.0, step_min = 0.125)
+    known_datapoints[wavelength][target] = {'rotate': harpia.berek_rotator_actual_rotate_angle(), 'tilt': harpia.berek_rotator_actual_tilt_angle(), 'data': get_polarization_information()}
 
     with open("./package/known_datapoints.json", "w") as f:
         json.dump(known_datapoints, f, indent = 2)

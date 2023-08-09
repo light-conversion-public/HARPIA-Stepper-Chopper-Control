@@ -45,6 +45,7 @@ class MotorBoard:
                  'StSlp' : ('ST_SLP', 0x000E),
                  'StallTh' : ('STALL_TH', 0x0014),
                  'StepMode' : ('STEP_MODE', 0x0016),
+                 'Status' : ('STATUS', 0x0019),
                  'LSStatus': ('', 0x0100),
                  'LSEnable': ('', 0x0103)}
     
@@ -54,6 +55,19 @@ class MotorBoard:
         self.sender = _sender
         self.speed = _speed
         
+        
+    def wait_until_stopped(self, motor_index):
+        """Wait until motor stops."""
+        stopped = False        
+
+        while not stopped:
+            status = parse_int_from_response(self.get_register(self.reg_dict['Status'][1], motor_index))
+            
+            stopped = ((status >> 5) & 0x03) == 0                        
+            
+            print ('position', parse_int_from_response(self.get_register(self.reg_dict['AbsPos'][1], motor_index)))
+
+            time.sleep(0.05)
     def set_register(self, registerAddress, index = 0, value = 0):
         if type(value) == float:
             data4bytes = lcan.float_to_hex(value)
@@ -88,6 +102,7 @@ class MotorBoard:
                 
                 response = self.set_register(self.reg_dict[key][1], index, motor_info[key])
                 print ('<', response, 'for', key)
+    
     def reset_motor(self, index):
         self.set_register(self.reg_dict['RunForward'][1], self.speed)
         
@@ -110,14 +125,19 @@ def parse_int_from_response(response):
 
 
 class PolarizationDiagnosticsUnit:
-    def __init__ (self, mb, motor_index, reduction, speed, motor_config):
+    def __init__ (self, mb, motor_index, reduction, speed, motor_config, zero_angle):
         self.mb = mb
         self.motor_index = motor_index
         self.speed = speed
         self.motor_config = motor_config
         self.step_mode = parse_int_from_response(mb.get_register(mb.reg_dict['StepMode'][1], self.motor_index))
         self.reduction = reduction
+        self.mb.set_register(self.mb.reg_dict['LSEnable'][1], self.motor_index, 0)
+        self.zero_angle = zero_angle
 
+    def wait_until_stopped(self):
+        self.mb.wait_until_stopped(self.motor_index)
+        
     def stop(self):
         self.mb.set_register(self.mb.reg_dict['Stop'][1], self.motor_index, 0)
         
@@ -136,16 +156,30 @@ class PolarizationDiagnosticsUnit:
         current_angle = (pos / (2 ** self.step_mode) / 200 / self.reduction * 360.0) % 360.0
 
         target = round(pos + (angle - current_angle) / 360.0 * self.reduction * 200 * (2**self.step_mode))
+        
+        print('current angle', current_angle, 'current steps', pos, 'target steps', target)
+        
         self.mb.set_register(self.mb.reg_dict['GoTo'][1], self.motor_index, target)
-     
+
+    def set_angle_blocking(self, angle):
+        self.set_angle(angle)
+        self.wait_until_stopped()
+        
     def set_current_angle_to_zero(self):
         self.mb.set_register(self.mb.reg_dict['AbsPos'][1], self.motor_index, 0)
     
     def reset(self):
         self.mb.set_register(self.mb.reg_dict['HardHiZ'][1], self.motor_index, 1)
-        self.mb.setup_motor(self.motor_index, self.motor_config)
+        self.mb.setup_motor(self.motor_index, self.motor_config)        
         self.step_mode = parse_int_from_response(self.mb.get_register(self.mb.reg_dict['StepMode'][1], self.motor_index))
         
-        self.mb.set_register(self.mb.reg_dict['RunReverse'][1], self.motor_index, 50000)
-        time.sleep(2)
-        self.set_current_angle_to_zero()        
+        self.mb.set_register(self.mb.reg_dict['LSEnable'][1], self.motor_index, 3)
+        self.mb.set_register(self.mb.reg_dict['RunReverse'][1], self.motor_index, 50000)        
+        
+        self.wait_until_stopped()
+        
+        self.mb.set_register(self.mb.reg_dict['LSEnable'][1], self.motor_index, 0)        
+        self.set_current_angle_to_zero()
+        
+        self.set_angle_blocking(self.zero_angle)
+        self.set_current_angle_to_zero()
