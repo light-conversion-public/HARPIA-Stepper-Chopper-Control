@@ -1,6 +1,7 @@
-# HARPIA Polarization Diagnostics package
-This script is a software controlling the Polarization Diagnostics Unit (PDU), 
-which is an optional extension of HARPIA Spectroscopy System.
+# HARPIA Polarization control package
+This script is a software for controlling the HARPIA Berek rotator and
+Polarization Diagnostics Unit (PDU) in order to set the required polarization
+(linear or circular). PDU is an optional extension of HARPIA Spectroscopy System.
 
 ## Requirements
  - Installed Light Conversion Launcher application. It is used to run this 
@@ -17,11 +18,8 @@ which is an optional extension of HARPIA Spectroscopy System.
  - The 'HARPIA REST' should be indicated as connected at '127.0.0.1' under the
    'Required connections'. If not, check HARPIA Service App and choose 'Refresh'
    in 'Connections' tab
- - Run the HARPIA Polarization Diagnostics script using the Launcher application
-   by clicking 'Start'
- - Click 'RESET' and wait until the unit performs reset procedure
- - Manually adjust the rotating Glan-Taylor prism, so that its rotation would
-   correspond to zero polarization angle
+ - OPTIONAL: Configure and run the HARPIA Polarization Diagnostics script using the Launcher 
+   application. Ensure, that the polarization angle, measured by the script, is correct
  
 ## Operation
  - If polarization is ought to be measured for the pump beam, stop the HARPIA 
@@ -33,7 +31,9 @@ which is an optional extension of HARPIA Spectroscopy System.
  - In HARPIA Service App, ensure, that the corresponding detector (default 
    "VIS array detector") is selected and its "AuxiliarySignal" value is set
    to the required analog channel.
- - Click 'START' for the polarization efficiency and extinction measurement
+ - Run the HARPIA Polarization Control script, insert the target linear polarization angle
+   and click 'Set linear polarization' or click 'Set circular polarization'. Setting
+   optimal parameters might take a few minutes.
  
 ## Advanced
 Advanced settings can be changed in the 'settings.json' file

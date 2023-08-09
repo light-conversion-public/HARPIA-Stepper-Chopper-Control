@@ -1,8 +1,8 @@
 {
-  "app_name": "Optimize polarization",
+  "app_name": "Polarization control",
   "description": "",
   "documentation_link": "README.md",
-  "version": "0.1",
+  "version": "0.2",
   "homepage": "",
   "guid": "",
   "connections": [

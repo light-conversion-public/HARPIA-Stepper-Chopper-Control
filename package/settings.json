@@ -5,5 +5,5 @@
     "motor_index": 5,
     "signal" : "SpectrometerSignal",
     "spectra_per_acquisition": 1,
-    "speed" : 3000
+    "speed" : 30000
 }

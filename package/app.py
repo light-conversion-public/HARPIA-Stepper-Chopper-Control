@@ -33,7 +33,9 @@ if not harpia:
     sys.exit("Could not connect to Harpia")
 
 
-
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import pyqtSlot, QObject, QThread, pyqtSignal
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib import pyplot, transforms
@@ -47,10 +49,6 @@ from utils import *
 
 f = open('./package/settings.json', 'r')
 settings = json.loads(f.read())
-
-with open('./package/known_datapoints.json', 'r') as fk:
-    known_datapoints = json.loads(fk.read())
-
 
 harpia.set_spectra_per_acquisition(settings['spectra_per_acquisition'])
 
@@ -107,7 +105,7 @@ def go_to(par):
     if par[1] is not None:                
         harpia.set_berek_rotator_target_tilt_angle(par[1])
 
-def fun_single(par):
+def fun_linear(par):
     go_to(par)
 
     score = get_intensity()
@@ -116,18 +114,14 @@ def fun_single(par):
 
     return score
 
-def fun(par):
+def fun_circular(par):
     go_to(par)
         
     data = get_polarization_information()
     
-    score = 0.0
-    if target == "lcp" or target == "rcp":
-        score = data['extinction']
-    else:
-        score = np.min([np.abs(data['polarization_angle'] - target), np.abs(data['polarization_angle'] - 180.0 - target)]) + data['rho_p'] * 200.0
-    
-    print(par, score, data)
+    score = data['extinction']
+
+    print(par, score)
         
     return score
 
@@ -202,34 +196,168 @@ def hooke_jeeves(fun, par, delta = 1.0, alpha = 0.5, step_min = 0.3):
             
         cont = i_iter < 10 and step >= step_min
 
-# FOR CIRCULAR
-#line_search_tilt(harpia.berek_rotator_actual_tilt_angle() - 15.0, 2.0)
-#hooke_jeeves(fun_rotate, [harpia.berek_rotator_actual_rotate_angle()], delta = 4.0, step_min = 1.0)
+class Worker(QObject):
+    finished = pyqtSignal()
+    progress = pyqtSignal(dict)
+    target_lp_angle = 0
 
-#line_search_tilt(harpia.berek_rotator_actual_tilt_angle() - 2.0, 0.5)
-#hooke_jeeves(fun_rotate, [harpia.berek_rotator_actual_rotate_angle()], delta = 1.0, step_min = 0.25)
+    ## FOR LINEAR
+    def set_lp(self):
+        self.is_running = True
 
-#known_datapoints[target] = {'rotate': harpia.berek_rotator_actual_rotate_angle(), 'tilt': harpia.berek_rotator_actual_rotate_angle()}
-wavelength = 710.0
-targets = np.arange(0.0, 95.0, 10.0)
-#targets = [40.0, 50.0, 60.0, 70.0, 80.0, 90.0]
-#targets = [30.0, 20.0, 10.0, 0.0]
+        diag_unit.set_angle(self.target_lp_angle)
+        diag_unit.wait_until_stopped()
+        hooke_jeeves(fun_linear, [harpia.berek_rotator_actual_rotate_angle(), harpia.berek_rotator_actual_tilt_angle()], delta = 7.0, step_min = 0.125)
 
-if known_datapoints.get(wavelength) is None:
-    known_datapoints[wavelength] = {}
+        self.progress.emit({'rotate': harpia.berek_rotator_actual_rotate_angle(), 'tilt': harpia.berek_rotator_actual_tilt_angle(), 'data': get_polarization_information()})
+        self.finished.emit()
+        
+    ## FOR CIRCULAR
+    def set_cp(self):
+        self.is_running = True
+
+        hooke_jeeves(fun_circular, [harpia.berek_rotator_actual_rotate_angle(), harpia.berek_rotator_actual_tilt_angle()], delta = 7.0, step_min = 0.125)
+
+        self.progress.emit({'rotate': harpia.berek_rotator_actual_rotate_angle(), 'tilt': harpia.berek_rotator_actual_tilt_angle(), 'data': get_polarization_information()})
+        self.finished.emit()
     
-go_to([45.0, 150.0])
 
-for target in targets:
+class MainWindow(QMainWindow):
+    sc = None
+    canDraw = True
     
-    # FOR LINEAR
     
-    
-    diag_unit.set_angle(target)
-    diag_unit.wait_until_stopped()
+    def __init__(self, title):
+        super().__init__()
+        self.title = title
+        self.left = 100
+        self.top = 100
+        self.width = 900
+        self.height = 900
+        self.initUI()
+        
+            
+    def initUI(self):
+        self.setWindowTitle(self.title)
+        #self.setGeometry(self.left, self.top, self.width, self.height)
+        
+        statusRowLayout = QHBoxLayout()
+        self.status_message_label = QLabel('idle')
+        statusRowLayout.addWidget(QLabel('STATUS: '))
+        statusRowLayout.addWidget(self.status_message_label)
+        statusRowLayout.addStretch()
 
-    hooke_jeeves(fun_single, [harpia.berek_rotator_actual_rotate_angle(), harpia.berek_rotator_actual_tilt_angle()], delta = 7.0, step_min = 0.125)
-    known_datapoints[wavelength][target] = {'rotate': harpia.berek_rotator_actual_rotate_angle(), 'tilt': harpia.berek_rotator_actual_tilt_angle(), 'data': get_polarization_information()}
+        linearPolarizationLayout = QHBoxLayout()
+        self.target_lp_textbox = QLineEdit()
+        self.target_lp_textbox.setText('0.0')
+        self.set_lp_btn = QPushButton('Set linear polarization')
+        self.set_lp_btn.clicked.connect(self.set_lp)
+        linearPolarizationLayout.addWidget(QLabel('Target angle, deg:'))
+        linearPolarizationLayout.addWidget(self.target_lp_textbox)
+        linearPolarizationLayout.addWidget(self.set_lp_btn)
 
-    with open("./package/known_datapoints.json", "w") as f:
-        json.dump(known_datapoints, f, indent = 2)
+        circularPolarizationLayout = QHBoxLayout()
+        self.set_cp_btn = QPushButton('Set circular polarization')
+        self.set_cp_btn.clicked.connect(self.set_cp)
+        circularPolarizationLayout.addWidget(self.set_cp_btn)
+
+        outerLayout = QVBoxLayout()
+
+        outerLayout.addLayout(statusRowLayout)
+        outerLayout.addLayout(linearPolarizationLayout)
+        outerLayout.addLayout(circularPolarizationLayout)
+        
+        widget = QWidget()
+        widget.setLayout(outerLayout)
+
+        self.setCentralWidget(widget)  
+        self.show()
+        
+    def set_lp_task(self, target):        
+        self.thread = QThread()
+        self.worker = Worker()
+        self.worker.moveToThread(self.thread)
+        self.worker.target_lp_angle = target
+        self.thread.started.connect(self.worker.set_lp)
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.worker.progress.connect(self.print_lp_status)
+        self.thread.finished.connect(self.thread.deleteLater)
+        self.thread.finished.connect(self.enableButtons)
+        self.thread.start()
+        # Final resets       
+        # self.thread.finished.connect(self.addToPlots)
+
+    def set_cp_task(self):        
+        self.thread = QThread()
+        self.worker = Worker()
+        self.worker.moveToThread(self.thread)
+        self.thread.started.connect(self.worker.set_cp)
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.worker.progress.connect(self.print_cp_status)
+        self.thread.finished.connect(self.thread.deleteLater)
+        self.thread.finished.connect(self.enableButtons)
+        self.thread.start()
+
+    def updatePlots(self, info): 
+        if (not self.canDraw) and (not info['finalize']): return()
+        self.canDraw = False
+        intensities = info['intensities']
+        angles = info['angles']
+        if info['finalize'] :
+            self.sc[0].line.set_xdata(np.concatenate(((angles[angles<np.pi*2])[:-1], [angles[0] + np.pi * 2])))
+            self.sc[0].line.set_ydata(np.concatenate(((intensities[angles<np.pi*2])[:-1], [intensities[0]])))
+        else:            
+            self.sc[0].line.set_xdata((angles[angles<np.pi*2])[:-1])
+            self.sc[0].line.set_ydata((intensities[angles<np.pi*2])[:-1])
+        
+            pars = analyze(intensities)        
+            if pars:
+                tangle = angles[pars["min_ind"]]
+                self.sc[0].maxpolline.set_xdata(np.array([tangle, np.pi+tangle]))
+                self.sc[0].maxpolline.set_ydata([np.max(intensities)]*2)
+                self.sc[0].minpolline.set_xdata([tangle + np.pi/2.0, np.pi + np.pi/2.0 +tangle])
+                self.sc[0].minpolline.set_ydata([np.max(intensities)]*2)
+            
+                self.sc[0].ax.set_title("{:.2f}:1, efficiency {:.2f}".format(pars["extinction"], pars["efficiency"]))
+        
+                self.sc[0].ax.set_ylim([0, np.max(intensities)])
+        
+        self.sc[0].draw()
+        app.processEvents()
+        self.canDraw = True
+                
+    def print_lp_status(self, info):
+        status = info['data']
+        self.status_message_label.setText("linear polarization was set to {:.2f} deg, {:.2f}:1, efficiency {:.2f}".format(status["polarization_angle"], status["extinction"], status["efficiency"]))
+
+    def print_cp_status(self, info):
+        status = info['data']
+        self.status_message_label.setText("circular polarization was set, {:.2f}:1".format(status["extinction"]))
+
+    def enableButtons(self):
+        self.set_lp_btn.setEnabled(True)
+        self.set_cp_btn.setEnabled(True)
+
+    def disableButtons(self):
+        self.set_lp_btn.setEnabled(False)
+        self.set_cp_btn.setEnabled(False)
+        
+    @pyqtSlot()
+    def set_lp(self):
+        target = float(self.target_lp_textbox.text())
+        self.status_message_label.setText(f'setting linear polarization to {target:.2f} deg...')
+        self.set_lp_task(target)
+        self.disableButtons()
+
+    @pyqtSlot()
+    def set_cp(self):
+        self.status_message_label.setText('setting circular polarization...')
+        self.set_cp_task()
+        self.disableButtons()
+            
+
+app = QApplication([])
+w = MainWindow('HARPIA Polarization control')
+app.exec_()
