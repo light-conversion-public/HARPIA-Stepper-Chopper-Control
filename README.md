@@ -22,6 +22,8 @@ pump signal chopping. Stepper chopper is an optional extension of HARPIA Spectro
    by clicking 'Start'
  - Use buttons 'RUN' and 'STOP' to start running at the target frequency or stop.
  
+![Package screenshot](./assets/screenshot.png)
+
 ## Advanced
 Advanced settings can be changed in the 'settings.json' file
  - 'can_id': (default 480) CAN bus id (448 for primary, 456 - secondary, 480 - tertiary,
