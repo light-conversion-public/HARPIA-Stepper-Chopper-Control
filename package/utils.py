@@ -36,6 +36,7 @@ class MotorBoard:
                  'FnSlpDec' : ('FN_SLP_DEC', 0x0010),
                  'IntSpeed' : ('INT_SPEED', 0x000D),
                  'KTherm' : ('K_THERM', 0x0011), 
+                 'FsSpeed': ('FS_SPD', 0x0015),
                  'KvalAcc' : ('KVAL_ACC', 0x000B),
                  'KvalDec' : ('KVAL_DEC', 0x000C),
                  'KvalHold' : ('KVAL_HOLD', 0x0009),
