@@ -111,7 +111,6 @@ class MotorBoard:
     def reset_motor(self, index):
         self.set_register(self.reg_dict['RunForward'][1], self.speed)
         
-
 class HarpiaCanSender:
     harpia = None
     def __init__ (self, _harpia):
@@ -123,11 +122,9 @@ class HarpiaCanSender:
     def get_register(self, baseId, data8bytes):
         return self.harpia._get('Advanced/GetCanRegister/{:}/{:}'.format(baseId, data8bytes))
         
-
 def parse_int_from_response(response):
     data4bytes = [int('0x'+response[i:i+2], 16) for i in np.arange(0, len(response),2)][-4:]
     return BytesArrayToInt(data4bytes)
-
 
 class StepperChopper:
     full_steps_per_revolution = 400
