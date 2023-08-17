@@ -128,6 +128,7 @@ def parse_int_from_response(response):
 
 class StepperChopper:
     full_steps_per_revolution = 400
+    seconds_per_tick28 = 67.108864
 
     def __init__ (self, mb, motor_index, blades, motor_config):
         self.mb = mb
@@ -138,11 +139,14 @@ class StepperChopper:
         self.init_and_reset_if_stopped()
 
     def calculate_speed(self, freq):
-        return int((2 ** self.step_mode) * self.full_steps_per_revolution / self.blades * freq)
+        steps_per_second = self.full_steps_per_revolution / self.blades * freq
+        steps_per_tick = steps_per_second * self.seconds_per_tick28
+        return int(steps_per_tick)
     
     def get_freq(self):
-        speed = parse_int_from_response(self.mb.get_register(self.mb.reg_dict['CurrentSpeed'][1], self.motor_index))
-        return speed / (2 ** self.step_mode) / self.full_steps_per_revolution * self.blades
+        steps_per_tick = parse_int_from_response(self.mb.get_register(self.mb.reg_dict['CurrentSpeed'][1], self.motor_index))
+        steps_per_second = steps_per_tick / self.seconds_per_tick28
+        return steps_per_second / self.full_steps_per_revolution * self.blades
 
     def is_running(self):
         return not self.mb.is_stopped(self.motor_index)
