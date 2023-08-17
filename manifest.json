@@ -1,9 +1,9 @@
 {
-  "app_name": "HARPIA polarization control",
+  "app_name": "HARPIA stepper chopper control",
   "description": "",
   "documentation_link": "README.md",
-  "version": "0.2",
-  "homepage": "https://github.com/light-conversion-public/HARPIA-Polarization-Control",
+  "version": "0.1",
+  "homepage": "https://github.com/light-conversion-public/HARPIA-Stepper-Chopper-Control",
   "guid": "",
   "connections": [
     {

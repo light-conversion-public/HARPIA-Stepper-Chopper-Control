@@ -1,0 +1,22 @@
+{
+  "Acc": 343,
+  "AlarmEn": 255,
+  "Config": 11909,
+  "Dec": 343,
+  "FnSlpAcc": 29,
+  "FnSlpDec": 29,
+  "FsSpeed": 1023,
+  "IntSpeed": 16383,
+  "KTherm": 0,
+  "KvalAcc": 151,
+  "KvalDec": 151,
+  "KvalHold": 30,
+  "KvalRun": 151,
+  "MaxSpeed": 326,
+  "MinSpeed": 4305,
+  "MotorName": "Sanyo Denki 103-4902",
+  "OcdTh": 8,
+  "StSlp": 17,
+  "StallTh": 17,
+  "StepMode": 6
+}
